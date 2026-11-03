@@ -1,0 +1,124 @@
+{
+  "python": {
+    "version": "3.13.17",
+    "url": "https://www.python.org/ftp/python/3.13.17/python-3.13.17-embed-amd64.zip",
+    "sha256": "9e35319bffedab8b36ad44d8f377cb4f1733bcec257a0b6d04d94f01486ddb38"
+  },
+  "wheels": [
+    {
+      "filename": "anyio-4.15.1-py3-none-any.whl",
+      "sha256": "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "av-19.0.2-cp312-abi3-win_amd64.whl",
+      "sha256": "3ce5a1d7b916d13c16ac58f1756f0fee4af2d53f02bc1403e18550b50d375a22",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "click-8.5.0-py3-none-any.whl",
+      "sha256": "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "ctranslate2-4.8.4-cp313-cp313-win_amd64.whl",
+      "sha256": "d9523961651ac0f51e4e62d03307609ff93d828b32ae92dc8b14a7e55243f6f2",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "faster_whisper-1.2.1-py3-none-any.whl",
+      "sha256": "79a66ad50688c0b794dd501dc340a736992a6342f7f95e5811be60b5224a26a7",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "filelock-4.2.4-py3-none-any.whl",
+      "sha256": "301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "flatbuffers-25.12.19-py2.py3-none-any.whl",
+      "sha256": "7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "fsspec-2026.9.0-py3-none-any.whl",
+      "sha256": "8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "h11-0.16.0-py3-none-any.whl",
+      "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "hf_xet-1.7.0-cp38-abi3-win_amd64.whl",
+      "sha256": "2b7bb5727889b0f2436dbaaad8fc4c3e66b8240d992716989e0c086b4278b1bc",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "httpcore2-2.16.0-py3-none-any.whl",
+      "sha256": "5c4358319f2602d984ad93182c9fee5160f22e9da7babdda870a5e7c4e2dc34f",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "httpx2-2.16.0-py3-none-any.whl",
+      "sha256": "fd2c5d7909e8d86fe92d53020c310ca0e4e431b838c207c5754b9bbf0308d49a",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "huggingface_hub-2.3.0-py3-none-any.whl",
+      "sha256": "5da369600233568a126eb5578754935b2add9446b42d9e2fc0927d56840ac1a5",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "idna-3.20-py3-none-any.whl",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "numpy-2.5.4-cp313-cp313-win_amd64.whl",
+      "sha256": "8b4d2fd2d34e5f8c9235ee787de5631a37a28402b15cb80814df973d2be54129",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "onnxruntime-1.31.1-cp313-cp313-win_amd64.whl",
+      "sha256": "0558f29d5f6ac09957390c9c5495931485ee8ae7f0ce781ccee86a0ae5c2348b",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "protobuf-7.36.2-cp310-abi3-win_amd64.whl",
+      "sha256": "a300819d441e078a5608c0d3c709796bb548136058fda017ae51d425b44fd353",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "pyyaml-6.0.3-cp313-cp313-win_amd64.whl",
+      "sha256": "79005a0d97d5ddabfeeea4cf676af11e647e41d81c9a7722a193022accdb6b7c",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "tokenizers-0.23.3-cp310-abi3-win_amd64.whl",
+      "sha256": "1f0823bb00c5fdc98e487354d54dd55a03848d61a1a0bf29a68c77f24f3b26c3",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "tqdm-4.70.1-py3-none-any.whl",
+      "sha256": "c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "truststore-0.10.5-py3-none-any.whl",
+      "sha256": "9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c",
+      "source": "https://pypi.org/"
+    },
+    {
+      "filename": "typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+      "source": "https://pypi.org/"
+    }
+  ]
+}

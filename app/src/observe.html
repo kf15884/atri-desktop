@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 本地观察</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'none'">
+<link rel="stylesheet" href="observe.css"></head><body>
+<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.3</div><h1>一起看，慢慢理解。</h1><p>只观察选定来源。原始画面和声音不发送到 HDS。</p></div><span id="badge" role="status">未开始</span></header>
+<div class="layout"><section class="panel controls"><h2>01 · 选择观察来源</h2><p class="muted">优先选择播放器窗口。选择屏幕会包含该屏幕的其他内容。</p>
+<div class="line"><label class="grow">窗口 / 屏幕<select id="source"><option value="">点击刷新读取可捕获来源</option></select></label><button id="refresh" class="secondary">刷新</button></div>
+<img id="sourcePreview" alt="选定来源的本地预览" hidden><p class="caption">窗口标题只在这里显示，不同步服务器。</p>
+<h2>02 · 本地识别</h2><label>视觉服务（仅本机 HTTP）<input id="base" value="http://127.0.0.1:11434/v1" spellcheck="false"></label>
+<label>已安装的视觉模型<input id="model" value="qwen2.5vl:3b" spellcheck="false"></label>
+<div class="line"><label class="grow">每轮观察长度<select id="window"><option value="15">15 秒</option><option value="30" selected>30 秒</option><option value="60">60 秒</option></select></label><div class="pill">顺序采样 · 最多 6 格</div></div>
+<label class="check"><input type="checkbox" id="audio"><span>加入电脑播放声音<span class="muted small">Windows 系统回环，可能包含其他应用声音；不使用麦克风。</span></span></label>
+<div id="audioConfig" hidden><label>本地 ASR 服务<input id="asrBase" value="http://127.0.0.1:8000/v1" spellcheck="false"></label><label>已安装的 ASR 模型<input id="asrModel" value="SenseVoiceSmall" spellcheck="false"></label></div>
+<label class="check sync"><input type="checkbox" id="sync"><span>允许向 HDS 同步观察文字<span class="muted small">默认仅本地。开启后，文字可能随 HDS 请求发送给其模型供应商；不代表 Atri 已经使用。</span></span></label>
+<div class="actions"><button id="start" class="primary">开始观察</button><button id="stop" class="secondary" disabled>停止并清缓存</button></div><p id="error" role="alert" class="error"></p>
+</section><section class="panel results"><div class="titleline"><h2>观察记录</h2><span class="muted small">最近 4 轮 · 仅内存</span></div>
+<div id="state" class="status">没有后台录屏。点击开始后才会持续捕获。</div>
+<div id="empty" class="empty"><div class="empty-icon">◫</div><h3>先选择一个窗口</h3><p>完成一轮本地识别后，分镜和观察文字会出现在这里。</p><p class="small">缓存最多约 120 秒。可以点选格子局部回看，不提前读取未来剧情。</p></div>
+<div id="reports" aria-live="polite"></div>
+<div class="boundary"><strong>这不是完播证明</strong><p>时间标记是观察会话经过时间，不是播放器时间。暂停或跳转视频时，请停止观察后重新开始。截图采样可能漏掉动作；ASR 也可能误识。</p></div>
+</section></div><footer>Ctrl+Alt+O 可立即停止观察；关闭此窗口或退出也会清除本地原始缓存。同步模式断线也会停止，不重放旧观察。</footer></main><script src="observe-ui.js"></script></body></html>

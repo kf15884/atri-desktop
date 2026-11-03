@@ -1,0 +1,15 @@
+{
+  "name": "atri-desktop",
+  "productName": "Atri Desktop",
+  "version": "0.3.0",
+  "description": "Atri 桌面立绘与对话框（镜像QQ私聊）",
+  "main": "src/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "38.8.6"
+  },
+  "author": "Atri15884"
+}
