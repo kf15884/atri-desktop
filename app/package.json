@@ -1,8 +1,8 @@
 {
   "name": "atri-desktop",
   "productName": "Atri Desktop",
-  "version": "0.3.0",
-  "description": "Atri 桌面立绘与对话框（镜像QQ私聊）",
+  "version": "0.4.0",
+  "description": "Atri 桌面：一起看番（连 atri-self）、立绘与对话框（旧版 HDS 镜像）",
   "main": "src/main.js",
   "license": "MIT",
   "scripts": {

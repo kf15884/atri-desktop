@@ -1,0 +1,31 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 一起看番</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; connect-src 'none'">
+<link rel="stylesheet" href="observe.css"></head><body>
+<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.4</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
+<div class="layout"><section class="panel controls">
+<h2>01 · 看什么</h2>
+<div class="line"><label class="grow">窗口 / 屏幕<select id="source"><option value="">点刷新读取能截的窗口</option></select></label><button id="refresh" class="secondary">刷新</button></div>
+<img id="sourcePreview" alt="选定窗口的预览" hidden>
+<div class="line"><label class="grow">番名<input id="title" list="watchlist" placeholder="从番单选，或者自己填" spellcheck="false"><datalist id="watchlist"></datalist></label><label style="width:7em">第几集<input id="episode" placeholder="3"></label><label style="width:7em">从几分开始<input id="startMin" placeholder="0"></label></div>
+<p class="caption">没填番名会先用窗口标题，你确认一下再开始。番名用来查角色表（Bangumi，只取名字和头像）。</p>
+<div class="line"><label class="grow">交给看图的节奏<select id="mode"><option value="interval">每 10 秒一次</option><option value="realtime">实时（攒够几个新画面就交，最快 5 秒）</option></select></label><label style="width:8em">每秒截几帧<select id="fps"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
+<label class="check"><input type="checkbox" id="strip" checked><span>字幕条单独看<span class="muted small">底部字幕按原分辨率截出来，让看图模型照抄。</span></span></label>
+<label class="check"><input type="checkbox" id="castRef" checked><span>带角色参考图<span class="muted small">主要角色头像标号一起交过去，认人更准；每次多一张小图。</span></span></label>
+<div class="actions"><button id="start" class="primary">开始一起看</button><button id="stop" class="secondary" disabled>看完了 / 停止</button></div><p id="error" role="alert" class="error"></p>
+<h2>02 · 设置</h2>
+<label>Atri 地址（SSH 隧道口）<input id="atriUrl" spellcheck="false" placeholder="http://127.0.0.1:15160"></label>
+<label>Atri 口令<input id="token" type="password" placeholder="已保存的不显示；要改才填" autocomplete="off"></label>
+<label>看图地址<input id="visionBase" spellcheck="false" placeholder="https://api.deepseek.com"></label>
+<label>看图模型<input id="visionModel" spellcheck="false" placeholder="和服务器“看”用的同一个"></label>
+<label>看图密钥<input id="key" type="password" placeholder="只存在这台电脑上（系统加密）；要改才填" autocomplete="off"></label>
+<label>额外参数（JSON，可不填）<input id="extraBody" spellcheck="false" placeholder='{"thinking":{"type":"disabled"}}'></label>
+<div class="line"><label class="grow">输入单价（¥/百万 token）<input id="priceIn" inputmode="decimal"></label><label class="grow">输出单价<input id="priceOut" inputmode="decimal"></label></div>
+<div class="actions"><button id="save" class="secondary">保存设置</button><button id="hello" class="secondary">试一下连 Atri</button></div><p id="saveMsg" class="caption"></p>
+</section><section class="panel results"><div class="titleline"><h2>看到的</h2><span id="cost" class="muted small">还没花钱</span></div>
+<div id="state" class="status">没在截图。点“开始一起看”才会开始。</div>
+<video id="video" muted playsinline hidden></video>
+<div id="empty" class="empty"><div class="empty-icon">◫</div><h3>先选播放器窗口</h3><p>每交一次，这里会出现拼图和看图模型写的内容，以及交没交给 Atri。</p></div>
+<div id="reports" aria-live="polite"></div>
+<div class="boundary"><strong>这不是完播证明</strong><p>挑帧可能漏掉很快的动作；看图模型可能认错字幕和人。时间按“从几分开始 + 播放的时长”估算，暂停（画面十几秒不动）不算；快进、换集请停止后重新开始。</p></div>
+</section></div><footer>关掉这个窗口或退出程序会停止截图；截下来的画面只在内存里，交完就丢。</footer></main>
+<script src="frames-core.js"></script><script src="together-ui.js"></script></body></html>

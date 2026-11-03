@@ -29,7 +29,7 @@ const getToken = () => {
 }
 const setToken = (t) => { settings.tokenEnc = t ? safeStorage.encryptString(t).toString('base64') : ''; saveSettings() }
 
-let pet, chat, setup, tray, bridge, observeWindow, observation
+let pet, chat, setup, tray, bridge, observeWindow, observation, togetherWindow, together
 const send = (win, ch, data) => { if (win && !win.isDestroyed()) win.webContents.send(ch, data) }
 const broadcast = (ch, data) => { send(pet, ch, data); send(chat, ch, data) }
 
@@ -77,6 +77,13 @@ function createObserve() {
   observeWindow.loadFile(path.join(__dirname,'observe.html'))
   observeWindow.on('closed',()=>{observation?.stop();observeWindow=null})
 }
+function createTogether() {
+  if (togetherWindow && !togetherWindow.isDestroyed()) { togetherWindow.show(); togetherWindow.focus(); return }
+  togetherWindow = new BrowserWindow({ width: 1120, height: 880, minWidth: 380, minHeight: 640, title: 'Atri · 一起看番', autoHideMenuBar: true, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false } })
+  togetherWindow.setContentProtection(true)
+  togetherWindow.loadFile(path.join(__dirname, 'together.html'))
+  togetherWindow.on('closed', () => { void together?.stop(); togetherWindow = null })
+}
 function createSetup() {
   if (setup && !setup.isDestroyed()) { setup.focus(); return }
   setup = new BrowserWindow({ width: 460, height: 520, title: 'Atri 设置', autoHideMenuBar: true, resizable: false,
@@ -100,7 +107,8 @@ function trayMenu() {
     { label: pet && pet.isVisible() ? '隐藏立绘' : '显示立绘', click: () => { pet.isVisible() ? pet.hide() : pet.showInactive(); tray.setContextMenu(trayMenu()) } },
     { label: '点击穿透', type: 'checkbox', checked: !!settings.clickThrough, click: (m) => { settings.clickThrough = m.checked; saveSettings(); applyClickThrough() } },
     { type: 'separator' },
-    { label: '本地观察 / 一起看番…', click: createObserve },
+    { label: '和 Atri 一起看番…', click: createTogether },
+    { label: '本地观察（旧版 HDS）…', click: createObserve },
     { label: '停止观察并清缓存 (Ctrl+Alt+O)', click: () => observation?.stop() },
     { label: '设置…', click: createSetup },
     { label: '重新连接', click: () => bridge.restart() },
@@ -125,13 +133,14 @@ app.whenReady().then(() => {
   createPet()
   tray.setContextMenu(trayMenu())
   globalShortcut.register('Control+Alt+A', () => { chat && !chat.isDestroyed() && chat.isFocused() ? chat.hide() : createChat() })
-  observation = require('./observe-main').install({ipcMain,getWindow:()=>observeWindow&&!observeWindow.isDestroyed()?observeWindow:null,bridge:()=>bridge})
+  together = require('./together-main').install({ ipcMain, userDir, getWindow: () => togetherWindow && !togetherWindow.isDestroyed() ? togetherWindow : null })
+  observation = require('./observe-main').install({ipcMain,getWindow:()=>observeWindow&&!observeWindow.isDestroyed()?observeWindow:null,bridge:()=>bridge,otherDisplay:(r)=>together.displaySource(r)})
   globalShortcut.register('Control+Alt+O', () => observation?.stop())
   startBridge()
   if (!settings.tokenEnc || !settings.image) createSetup()
 })
 app.on('window-all-closed', (e) => { if (!app.isQuitting) e.preventDefault() })
-app.on('will-quit', () => { globalShortcut.unregisterAll(); observation?.stop();if (bridge) bridge.stop() })
+app.on('will-quit', () => { globalShortcut.unregisterAll(); observation?.stop(); void together?.stop();if (bridge) bridge.stop() })
 
 ipcMain.handle('init', () => ({ settings: publicSettings(), history, conn: bridge ? bridge.state : { label: '未连接' } }))
 ipcMain.handle('say', async (_e, text) => bridge.say(String(text || '')))

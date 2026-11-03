@@ -1,7 +1,7 @@
 'use strict'
 const {desktopCapturer,nativeImage,systemPreferences,session}=require('electron')
 const {Observer}=require('./observe-core')
-function install({ipcMain,openWindow,getWindow,bridge,onState}) {
+function install({ipcMain,openWindow,getWindow,bridge,onState,otherDisplay}) {
   let selected=null,selectedName=null,timer=null
   const publicSources=async()=> (await desktopCapturer.getSources({types:['window','screen'],thumbnailSize:{width:320,height:180}})).filter(s=>!s.name.startsWith('Atri')).map(s=>({id:s.id,name:s.name,kind:s.id.startsWith('screen:')?'screen':'window',preview:s.thumbnail.toDataURL()}))
   const observer=new Observer({
@@ -21,6 +21,8 @@ function install({ipcMain,openWindow,getWindow,bridge,onState}) {
   // Only the explicit observation window can request desktop media, only while its session is active.
   session.defaultSession.setDisplayMediaRequestHandler(async(request,callback)=>{
     try{
+      // 一起看番的观看窗口（0.4）：给它选定的来源，只要画面
+      const other=otherDisplay?.(request);if(other)return callback({video:other})
       const win=getWindow();if(!win||request.frame!==win.webContents.mainFrame||!observer.running||!observer.options.audio||!selected)return callback({})
       const source=(await desktopCapturer.getSources({types:[selected.startsWith('screen:')?'screen':'window'],thumbnailSize:{width:0,height:0}})).find(s=>s.id===selected)
       callback(source?{video:source,audio:'loopback'}:{})
