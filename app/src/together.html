@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 一起看番</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; connect-src 'none'">
 <link rel="stylesheet" href="observe.css"></head><body>
-<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.4</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
+<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.4.1</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
 <div class="layout"><section class="panel controls">
 <h2>01 · 看什么</h2>
 <div class="line"><label class="grow">窗口 / 屏幕<select id="source"><option value="">点刷新读取能截的窗口</option></select></label><button id="refresh" class="secondary">刷新</button></div>
@@ -11,6 +11,8 @@
 <div class="line"><label class="grow">交给看图的节奏<select id="mode"><option value="interval">每 10 秒一次</option><option value="realtime">实时（攒够几个新画面就交，最快 5 秒）</option></select></label><label style="width:8em">每秒截几帧<select id="fps"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label></div>
 <label class="check"><input type="checkbox" id="strip" checked><span>字幕条单独看<span class="muted small">底部字幕按原分辨率截出来，让看图模型照抄。</span></span></label>
 <label class="check"><input type="checkbox" id="castRef" checked><span>带角色参考图<span class="muted small">主要角色头像标号一起交过去，认人更准；每次多一张小图。</span></span></label>
+<label>声音<select id="hearingMode"><option value="cloud">用“听”的模型（台词翻成中文，听得出音乐和气氛）</option><option value="local">用电脑上的日语识别（不花钱，只出日语原文）</option><option value="off">不要声音（只看画面）</option></select></label>
+<p class="caption">录的是电脑正在播放的声音（Windows 系统回环，不用麦克风），QQ 提示音、别的视频也会录进去，看的时候最好关掉。太安静的段落不去听。</p>
 <div class="actions"><button id="start" class="primary">开始一起看</button><button id="stop" class="secondary" disabled>看完了 / 停止</button></div><p id="error" role="alert" class="error"></p>
 <h2>02 · 设置</h2>
 <label>Atri 地址（SSH 隧道口）<input id="atriUrl" spellcheck="false" placeholder="http://127.0.0.1:15160"></label>
@@ -19,7 +21,12 @@
 <label>看图模型<input id="visionModel" spellcheck="false" placeholder="和服务器“看”用的同一个"></label>
 <label>看图密钥<input id="key" type="password" placeholder="只存在这台电脑上（系统加密）；要改才填" autocomplete="off"></label>
 <label>额外参数（JSON，可不填）<input id="extraBody" spellcheck="false" placeholder='{"thinking":{"type":"disabled"}}'></label>
-<div class="line"><label class="grow">输入单价（¥/百万 token）<input id="priceIn" inputmode="decimal"></label><label class="grow">输出单价<input id="priceOut" inputmode="decimal"></label></div>
+<div class="line"><label class="grow">看图输入单价（¥/百万 token）<input id="priceIn" inputmode="decimal"></label><label class="grow">看图输出单价<input id="priceOut" inputmode="decimal"></label></div>
+<label>听的地址<input id="hearingBase" spellcheck="false" placeholder="和服务器“听”用的同一条，例如 a6api 的 /v1"></label>
+<label>听的模型<input id="hearingModel" spellcheck="false" placeholder="例如 gemini-3.7-flash（要能听 input_audio）"></label>
+<label>听的密钥<input id="hearingKey" type="password" placeholder="只存在这台电脑上（系统加密）；要改才填" autocomplete="off"></label>
+<div class="line"><label class="grow">听的输入单价<input id="hearPriceIn" inputmode="decimal"></label><label class="grow">听的输出单价<input id="hearPriceOut" inputmode="decimal"></label></div>
+<div class="line"><label class="grow">本地日语识别地址<input id="asrBase" spellcheck="false" placeholder="http://127.0.0.1:8000/v1"></label><label style="width:8em">模型<input id="asrModel" spellcheck="false" placeholder="small"></label></div>
 <div class="actions"><button id="save" class="secondary">保存设置</button><button id="hello" class="secondary">试一下连 Atri</button></div><p id="saveMsg" class="caption"></p>
 </section><section class="panel results"><div class="titleline"><h2>看到的</h2><span id="cost" class="muted small">还没花钱</span></div>
 <div id="state" class="status">没在截图。点“开始一起看”才会开始。</div>

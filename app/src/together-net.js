@@ -122,6 +122,44 @@ async function askVision({ base, model, key, extraBody, system, prompt, images, 
   return { text: r.text, usage }
 }
 
+/**
+ * 听一段声音（16kHz WAV）：用你自己填的“听”线路（OpenAI 兼容，input_audio），和服务器“听”同一套提示词。
+ * 超时、5xx 再试一次；回答里只取 <结果>…</结果>。
+ */
+async function askHearing({ base, model, key, extraBody, prompt, wav, fetch: f, timeoutMs = 60000, finalAnswer }) {
+  const fetchFn = f || fetch
+  if (!model) throw new Error('先填听的模型')
+  if (!key) throw new Error('先填听的密钥')
+  const url = visionBase(base) + '/chat/completions'
+  const once = async () => {
+    const started = Date.now()
+    let r
+    try {
+      r = await fetchFn(url, {
+        method: 'POST',
+        redirect: 'error',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+        body: JSON.stringify({ ...(extraBody || {}), model, temperature: 0.2, max_tokens: 800, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'input_audio', input_audio: { data: Buffer.from(wav).toString('base64'), format: 'wav' } }] }] }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+    } catch (e) {
+      return { status: 0, raw: e && e.message ? e.message : String(e), ms: Date.now() - started }
+    }
+    const raw = await boundedText(r, 512 * 1024).catch((e) => String(e.message))
+    let j = {}
+    try { j = JSON.parse(raw) } catch {}
+    const msg = j.choices && j.choices[0] && j.choices[0].message
+    return { status: r.status, ok: r.ok, text: String((msg && msg.content) || '').trim(), usage: j.usage || {}, raw: raw.slice(0, 200), ms: Date.now() - started }
+  }
+  let r = await once()
+  if (!r.ok && (r.status === 0 || r.status >= 500)) r = await once()
+  const usage = { tier: 'hearing', model, promptTokens: Number(r.usage && r.usage.prompt_tokens) || 0, completionTokens: Number(r.usage && r.usage.completion_tokens) || 0, ms: r.ms || 0, ok: Boolean(r.ok && r.text) }
+  if (!r.ok) throw Object.assign(new Error('听的模型出错：' + (r.status ? 'HTTP ' + r.status + ' ' : '') + r.raw), { usage })
+  const text = (finalAnswer ? finalAnswer(r.text) : r.text).slice(0, 400)
+  if (!text) throw Object.assign(new Error('听的模型回答是空的'), { usage })
+  return { text, usage }
+}
+
 /** 角色头像：只认 Bangumi 图床 */
 async function fetchPortrait(url, f) {
   const u = new URL(String(url))
@@ -147,4 +185,4 @@ async function fetchPortrait(url, f) {
   return { type: type.split(';')[0], data: Buffer.concat(parts) }
 }
 
-module.exports = { atriBase, visionBase, DeskClient, askVision, fetchPortrait }
+module.exports = { atriBase, visionBase, DeskClient, askVision, askHearing, fetchPortrait }

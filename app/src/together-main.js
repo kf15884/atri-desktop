@@ -6,9 +6,12 @@
 const { desktopCapturer, safeStorage } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
-const { DeskClient, askVision, fetchPortrait, atriBase, visionBase } = require('./together-net')
+const { DeskClient, askVision, askHearing, fetchPortrait, atriBase, visionBase } = require('./together-net')
+const { transcribe, localBase } = require('./observe-core')
+const { finalAnswer, fillHeard, clock } = require('./frames-core')
 
-const DEFAULTS = { atriUrl: 'http://127.0.0.1:15160', tokenEnc: '', visionBase: 'https://api.deepseek.com', visionModel: '', keyEnc: '', extraBody: '', priceIn: 0, priceOut: 0, mode: 'interval', fps: 4, castRef: true, strip: true }
+const DEFAULTS = { atriUrl: 'http://127.0.0.1:15160', tokenEnc: '', visionBase: 'https://api.deepseek.com', visionModel: '', keyEnc: '', extraBody: '', priceIn: 0, priceOut: 0, mode: 'interval', fps: 4, castRef: true, strip: true,
+  hearingMode: 'cloud', hearingBase: '', hearingModel: '', hearingKeyEnc: '', hearPriceIn: 0, hearPriceOut: 0, asrBase: 'http://127.0.0.1:8000/v1', asrModel: 'small' }
 
 function install({ ipcMain, userDir, getWindow }) {
   const file = path.join(userDir, 'together.json')
@@ -17,7 +20,8 @@ function install({ ipcMain, userDir, getWindow }) {
   const save = () => { fs.mkdirSync(userDir, { recursive: true }); fs.writeFileSync(file, JSON.stringify(s, null, 2), { mode: 0o600 }) }
   const enc = (t) => (t ? safeStorage.encryptString(t).toString('base64') : '')
   const dec = (b) => { if (!b) return ''; try { return safeStorage.decryptString(Buffer.from(b, 'base64')) } catch { return '' } }
-  const pub = () => ({ atriUrl: s.atriUrl, hasToken: !!s.tokenEnc, visionBase: s.visionBase, visionModel: s.visionModel, hasKey: !!s.keyEnc, extraBody: s.extraBody, priceIn: s.priceIn, priceOut: s.priceOut, mode: s.mode, fps: s.fps, castRef: s.castRef, strip: s.strip })
+  const pub = () => ({ atriUrl: s.atriUrl, hasToken: !!s.tokenEnc, visionBase: s.visionBase, visionModel: s.visionModel, hasKey: !!s.keyEnc, extraBody: s.extraBody, priceIn: s.priceIn, priceOut: s.priceOut, mode: s.mode, fps: s.fps, castRef: s.castRef, strip: s.strip,
+    hearingMode: s.hearingMode, hearingBase: s.hearingBase, hearingModel: s.hearingModel, hasHearingKey: !!s.hearingKeyEnc, hearPriceIn: s.hearPriceIn, hearPriceOut: s.hearPriceOut, asrBase: s.asrBase, asrModel: s.asrModel })
   const desk = () => new DeskClient({ base: s.atriUrl, token: dec(s.tokenEnc) })
   let session = null // { id, prompt, sourceId, sourceName }
   let selected = null
@@ -34,6 +38,13 @@ function install({ ipcMain, userDir, getWindow }) {
     if (typeof x.visionModel === 'string') s.visionModel = x.visionModel.trim().slice(0, 120)
     if (typeof x.key === 'string' && x.key.trim()) s.keyEnc = enc(x.key.trim())
     if (typeof x.extraBody === 'string') { const t = x.extraBody.trim(); if (t) { const v = JSON.parse(t); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('额外参数要是 JSON 对象') } s.extraBody = t }
+    if (x.hearingMode === 'cloud' || x.hearingMode === 'local' || x.hearingMode === 'off') s.hearingMode = x.hearingMode
+    if (typeof x.hearingBase === 'string') s.hearingBase = x.hearingBase.trim() ? visionBase(x.hearingBase) : ''
+    if (typeof x.hearingModel === 'string') s.hearingModel = x.hearingModel.trim().slice(0, 120)
+    if (typeof x.hearingKey === 'string' && x.hearingKey.trim()) s.hearingKeyEnc = enc(x.hearingKey.trim())
+    if (typeof x.asrBase === 'string') s.asrBase = localBase(x.asrBase)
+    if (typeof x.asrModel === 'string') s.asrModel = x.asrModel.trim().slice(0, 120)
+    for (const k of ['hearPriceIn', 'hearPriceOut']) if (Number.isFinite(Number(x[k]))) s[k] = Math.max(0, Number(x[k]))
     for (const k of ['priceIn', 'priceOut']) if (Number.isFinite(Number(x[k]))) s[k] = Math.max(0, Number(x[k]))
     if (x.mode === 'interval' || x.mode === 'realtime') s.mode = x.mode
     if (Number.isFinite(Number(x.fps))) s.fps = Math.min(6, Math.max(2, Math.round(Number(x.fps))))
@@ -61,7 +72,7 @@ function install({ ipcMain, userDir, getWindow }) {
     const r = await d.start({ title: String(x.title || '').slice(0, 60), episode: String(x.episode || '').slice(0, 20), startSec: Math.max(0, Number(x.startSec) || 0) })
     if (!r.ok) throw new Error('Atri 没开成：' + (r.error || ''))
     selected = src
-    session = { id: r.sessionId, prompt: hello.prompt }
+    session = { id: r.sessionId, prompt: hello.prompt, hearing: s.hearingMode }
     // 角色头像：取到的给观看窗口拼参考图（data URL，只在内存里）
     const cast = []
     if (s.castRef && r.cast && Array.isArray(r.cast.members)) {
@@ -81,23 +92,48 @@ function install({ ipcMain, userDir, getWindow }) {
     if (images.length === 0 || images.some((b) => b.length > 2 * 1024 * 1024)) return { ok: false, error: '图不对' }
     let extraBody = {}
     try { extraBody = s.extraBody ? JSON.parse(s.extraBody) : {} } catch {}
+    // 先听（这一段的声音），听到的填进看图的提示词里，再一起交给 Atri
+    const sound = await hear(x, id)
+    const usages = sound.usage ? [sound.usage] : []
     let res
     try {
-      res = await askVision({ base: s.visionBase, model: s.visionModel, key: dec(s.keyEnc), extraBody, system: session.prompt.system, prompt: String(x.prompt || '').slice(0, 6000), images })
+      res = await askVision({ base: s.visionBase, model: s.visionModel, key: dec(s.keyEnc), extraBody, system: session.prompt.system, prompt: fillHeard(String(x.prompt || '').slice(0, 6000), sound.state === 'heard' ? sound.text : ''), images })
     } catch (err) {
-      return { ok: false, error: err.message, usage: err.usage || null }
+      return { ok: false, error: err.message, usage: err.usage || null, hearingUsage: sound.usage || null, sound: soundOut(sound) }
     }
     // 停了以后回来的结果不交
     if (!session || session.id !== id) return { ok: false, error: '这一场已经停了', usage: res.usage }
-    const out = { ok: true, text: res.text, usage: res.usage }
+    const out = { ok: true, text: res.text, usage: res.usage, hearingUsage: sound.usage || null, sound: soundOut(sound), soundError: sound.error || null }
     let data = null
     try { const a = res.text.indexOf('{'), b = res.text.lastIndexOf('}'); data = JSON.parse(res.text.slice(a, b + 1)) } catch {}
     if (!data) return { ...out, ok: false, error: '看图模型没按格式写，这一段没交给 Atri' }
-    const post = await desk().segment({ sessionId: id, seq: x.seq, from: x.from, to: x.to, data, usage: [res.usage] }).catch((err) => ({ ok: false, error: err.message }))
+    const post = await desk().segment({ sessionId: id, seq: x.seq, from: x.from, to: x.to, data, sound: soundOut(sound), usage: [res.usage, ...usages] }).catch((err) => ({ ok: false, error: err.message }))
     return { ...out, data, delivered: post.ok === true, deliveryError: post.ok ? null : post.error || null, speak: post.speak === true }
   })
   ipcMain.handle('together-pause', async (e, paused) => { trusted(e); if (!session) return false; const r = await desk().pause(session.id, paused === true).catch(() => ({ ok: false })); return r.ok === true })
   ipcMain.handle('together-stop', async (e) => { trusted(e); return stop() })
+
+  const soundOut = (x) => ({ state: x.state, text: x.text || '', via: x.via || '' })
+
+  /** 听这一段：没开 / 没录到 → none；太安静 → silent（不去听，省钱）；出错 → failed（只说没听成，画面照看） */
+  async function hear(x, id) {
+    if (s.hearingMode === 'off') return { state: 'none' }
+    if (x.audio === 'none' || !x.wav) return { state: x.audio === 'silent' ? 'silent' : 'none' }
+    const wav = Buffer.from(x.wav)
+    if (wav.length > 2 * 1024 * 1024 || wav.toString('ascii', 0, 4) !== 'RIFF') return { state: 'failed', text: '' }
+    try {
+      if (s.hearingMode === 'local') {
+        const r = await transcribe({ base: s.asrBase, model: s.asrModel, wav, signal: AbortSignal.timeout(60000) })
+        return r.text ? { state: 'heard', text: '日语原文：' + r.text.slice(0, 380), via: 'local' } : { state: 'silent', via: 'local' }
+      }
+      const prompt = String(session && session.prompt && session.prompt.hearing || '只写听到的台词、音乐和气氛，150 字以内，结果放在 <结果></结果> 里。').replace('{from}', clock(x.from)).replace('{to}', clock(x.to))
+      const r = await askHearing({ base: s.hearingBase, model: s.hearingModel, key: dec(s.hearingKeyEnc), prompt, wav, finalAnswer })
+      if (!session || session.id !== id) return { state: 'none' }
+      return { state: /^没有台词[。]?$/.test(r.text.trim()) ? 'silent' : 'heard', text: r.text, via: 'cloud', usage: r.usage }
+    } catch (err) {
+      return { state: 'failed', text: '', via: s.hearingMode, usage: err.usage || null, error: err.message }
+    }
+  }
 
   async function stop() {
     const id = session && session.id
@@ -111,7 +147,8 @@ function install({ ipcMain, userDir, getWindow }) {
   function displaySource(request) {
     const w = getWindow()
     if (!w || request.frame !== w.webContents.mainFrame || !selected) return null
-    return selected
+    // 开了声音：Windows 系统回环（电脑正在播放的声音，不是麦克风）
+    return session && session.hearing !== 'off' ? { video: selected, audio: 'loopback' } : { video: selected }
   }
 
   return { stop, displaySource }

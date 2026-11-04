@@ -215,8 +215,45 @@
     if (x.cast && x.cast.length) lines.push(`图 ${k++}：角色参考图，编号对应：${x.cast.map((m) => `${m.n}=${m.name}${m.looks ? `（${m.looks}）` : ''}`).join('，')}。`)
     else if (x.names && x.names.length) lines.push(`已知角色：${x.names.join('、')}。`)
     if (x.prev) lines.push(`上一段（接着它写）：${x.prev}`)
+    // 听到的声音由主进程填进来（听完才知道）；没有就删掉这一行
+    if (x.heardSlot) lines.push(HEARD_SLOT)
     lines.push(x.format)
     return lines.join('\n')
+  }
+
+  const HEARD_SLOT = '{{HEARD}}'
+  function fillHeard(prompt, heard) {
+    return String(prompt).replace(HEARD_SLOT + '\n', heard ? `同一段听到的（耳朵听的，可能听错；以字幕条为准）：${heard}\n` : '')
+  }
+
+  /** 听的模型有时把草稿也写进来：只取 <结果>…</结果>；没写标签就去掉英文草稿行 */
+  function finalAnswer(text) {
+    const t = String(text || '')
+    const tagged = [...t.matchAll(/<结果>([\s\S]*?)(?:<\/结果>|$)/g)].map((m) => m[1].trim()).filter(Boolean)
+    if (tagged.length) return tagged[tagged.length - 1]
+    const lines = t.split('\n').filter((l) => /[\u4e00-\u9fff]/.test(l) && !/^(Rules|Requirements|Draft|Check|Let's|Length)/i.test(l.trim()))
+    return (lines.length ? lines.join('\n') : t).trim()
+  }
+
+  /** 16kHz 单声道 16 位 PCM 片段 → WAV */
+  function wav16(chunks) {
+    const n = chunks.reduce((a, c) => a + c.length, 0)
+    const buf = new ArrayBuffer(44 + n * 2)
+    const v = new DataView(buf)
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+    v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true)
+    let p = 44
+    for (const c of chunks) for (let i = 0; i < c.length; i++, p += 2) v.setInt16(p, c[i], true)
+    return new Uint8Array(buf)
+  }
+
+  /** 音量（0–1）：太小就当没声音，不去听 */
+  function rms(chunks) {
+    let sum = 0
+    let n = 0
+    for (const c of chunks) for (let i = 0; i < c.length; i++) { sum += (c[i] / 32768) ** 2; n++ }
+    return n ? Math.sqrt(sum / n) : 0
   }
 
   /** 从模型回答里取第一个 JSON 对象 */
@@ -247,5 +284,5 @@
     return ((Number(usage.promptTokens) || 0) * pin + (Number(usage.completionTokens) || 0) * pout) / 1e6
   }
 
-  return { SCAN_W, SCAN_H, gridHsv, scorePair, blockMax, Selector, capPicked, Batcher, clock, buildPrompt, parseJson, prevLine, cost, DEFAULT_SELECT }
+  return { SCAN_W, SCAN_H, gridHsv, scorePair, blockMax, Selector, capPicked, Batcher, clock, buildPrompt, parseJson, prevLine, cost, DEFAULT_SELECT, HEARD_SLOT, fillHeard, finalAnswer, wav16, rms }
 })

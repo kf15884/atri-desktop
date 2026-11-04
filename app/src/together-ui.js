@@ -15,10 +15,10 @@ let spent = 0
 let calls = 0
 
 const err = (e) => { $('error').textContent = e ? (e.message || String(e)) : '' }
-const settingIds = ['atriUrl', 'visionBase', 'visionModel', 'extraBody', 'priceIn', 'priceOut']
+const settingIds = ['atriUrl', 'visionBase', 'visionModel', 'extraBody', 'priceIn', 'priceOut', 'hearingBase', 'hearingModel', 'hearPriceIn', 'hearPriceOut', 'asrBase', 'asrModel']
 
 function lock(on) {
-  ;['source', 'refresh', 'title', 'episode', 'startMin', 'mode', 'fps', 'strip', 'castRef'].forEach((id) => ($(id).disabled = on))
+  ;['source', 'refresh', 'title', 'episode', 'startMin', 'mode', 'fps', 'strip', 'castRef', 'hearingMode'].forEach((id) => ($(id).disabled = on))
   $('start').disabled = on
   $('stop').disabled = !on
   $('badge').textContent = on ? '一起看着' : '未开始'
@@ -33,6 +33,8 @@ async function init() {
     $('fps').value = String(s.fps)
     $('strip').checked = s.strip
     $('castRef').checked = s.castRef
+    $('hearingMode').value = s.hearingMode
+    $('hearingKey').placeholder = s.hasHearingKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
     $('token').placeholder = s.hasToken ? '已保存（要改才填）' : '桌面口令（和服务器 ATRI_DESK_TOKEN 一样）'
     $('key').placeholder = s.hasKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
   } catch (e) { err(e) }
@@ -79,13 +81,15 @@ $('source').onchange = () => {
 }
 $('save').onclick = async () => {
   try {
-    const x = { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked }
+    const x = { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked, hearingMode: $('hearingMode').value }
     for (const id of settingIds) x[id] = $(id).value
     if ($('token').value) x.token = $('token').value
     if ($('key').value) x.key = $('key').value
+    if ($('hearingKey').value) x.hearingKey = $('hearingKey').value
     await atri.together('save', x)
     $('token').value = ''
     $('key').value = ''
+    $('hearingKey').value = ''
     $('saveMsg').textContent = '保存了'
     await init()
   } catch (e) { $('saveMsg').textContent = e.message || String(e) }
@@ -185,9 +189,10 @@ async function startRun() {
   const title = $('title').value.trim()
   if (!title && !confirm('没填番名：Atri 不知道看的是什么，也查不了角色表。照样开始吗？')) return
   const startSec = Math.max(0, Number($('startMin').value) || 0) * 60
-  await atri.together('save', { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked })
+  const hearing = $('hearingMode').value
+  await atri.together('save', { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked, hearingMode: hearing })
   const r = await atri.together('start', { sourceId: source.id, title, episode: $('episode').value.trim(), startSec })
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { width: CAP_W, height: CAP_H, frameRate: 10 }, audio: false })
+  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { width: CAP_W, height: CAP_H, frameRate: 10 }, audio: hearing !== 'off' })
   const video = $('video')
   video.srcObject = stream
   await video.play()
@@ -202,6 +207,8 @@ async function startRun() {
     cast,
     names: r.cast.map((m) => m.name),
     stripOn: $('strip').checked,
+    hearing,
+    audio: null,
     sel: new F.Selector(),
     batcher: new F.Batcher({ mode: $('mode').value }),
     small: Object.assign(document.createElement('canvas'), { width: F.SCAN_W, height: F.SCAN_H }),
@@ -216,10 +223,46 @@ async function startRun() {
     timer: setInterval(tick, Math.round(1000 / fps)),
   }
   stream.getVideoTracks()[0].onended = () => { void stopRun('窗口关了或截不到了') }
+  if (hearing !== 'off') {
+    if (stream.getAudioTracks().length) run.audio = startAudio(stream)
+    else err('没录到电脑的声音（只在 Windows 上能录系统声音），这次只看画面')
+  }
   lock(true)
   $('reports').replaceChildren()
   $('empty').hidden = false
   $('state').textContent = `开始了：${title ? '《' + title + '》' : ''}${run.episode ? ' 第 ' + run.episode + ' 集' : ''}${cast ? `，角色参考 ${cast.members.length} 个` : ''}`
+}
+
+/** 电脑正在播放的声音 → 16kHz 单声道 PCM 片段，最多留 40 秒 */
+function startAudio(stream) {
+  const ctx = new AudioContext({ sampleRate: 16000 })
+  const src = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()))
+  const proc = ctx.createScriptProcessor(4096, 1, 1)
+  const a = { ctx, src, proc, chunks: [] }
+  proc.onaudioprocess = (e) => {
+    const f = e.inputBuffer.getChannelData(0)
+    const out = new Int16Array(f.length)
+    for (let i = 0; i < f.length; i++) out[i] = Math.round(Math.max(-1, Math.min(1, f[i])) * 32767)
+    a.chunks.push(out)
+    if (a.chunks.length > 160) a.chunks.shift()
+  }
+  src.connect(proc)
+  // 接到一个静音的出口上（不然不跑），不会把声音再放一遍
+  const mute = ctx.createGain()
+  mute.gain.value = 0
+  proc.connect(mute)
+  mute.connect(ctx.destination)
+  return a
+}
+
+/** 这一段的声音：没录 → none；太安静 → silent；否则 WAV（最多 30 秒） */
+function takeAudio(R) {
+  if (R.hearing === 'off') return { audio: 'off' }
+  if (!R.audio) return { audio: 'none' }
+  const chunks = R.audio.chunks.splice(0)
+  const keep = chunks.slice(-Math.ceil((30 * 16000) / 4096))
+  if (keep.length === 0 || F.rms(keep) < 0.004) return { audio: 'silent' }
+  return { audio: 'yes', wav: F.wav16(keep) }
 }
 
 async function tick() {
@@ -274,13 +317,15 @@ async function submit(R, batch) {
     if (R.cast) images.push(await jpeg(R.cast.canvas, 0.85))
     const from = cells[0].t
     const to = Math.max(cells.at(-1).t, from + 1)
-    const prompt = F.buildPrompt({ title: R.title, episode: R.episode, from, to, cells, strip: !!st, cast: R.cast ? R.cast.members : null, names: R.names, prev: R.prev, format: R.prompt.format })
+    const prompt = F.buildPrompt({ title: R.title, episode: R.episode, from, to, cells, strip: !!st, cast: R.cast ? R.cast.members : null, names: R.names, prev: R.prev, format: R.prompt.format, heardSlot: R.hearing !== 'off' })
+    const sound = takeAudio(R)
     const seq = ++R.seq
     const preview = URL.createObjectURL(new Blob([images[0]], { type: 'image/jpeg' }))
     for (const x of batch) x.bmp.close()
-    const r = await atri.together('analyse', { sessionId: R.id, seq, from, to, images, prompt })
+    const r = await atri.together('analyse', { sessionId: R.id, seq, from, to, images, prompt, audio: sound.audio, ...(sound.wav ? { wav: sound.wav } : {}) })
     if (run !== R) return
     if (r.usage) { spent += F.cost(r.usage, { in: Number($('priceIn').value), out: Number($('priceOut').value) }); calls++ }
+    if (r.hearingUsage) spent += F.cost(r.hearingUsage, { in: Number($('hearPriceIn').value), out: Number($('hearPriceOut').value) })
     $('cost').textContent = `看了 ${calls} 次 · 约 ¥${spent.toFixed(3)}`
     if (r.data) R.prev = F.prevLine(r.data)
     show(preview, from, to, r)
@@ -305,7 +350,11 @@ function show(preview, from, to, r) {
   const p = document.createElement('p')
   const d = r.data
   p.textContent = d ? [d.scene, ...(d.events || []).map((e) => `${e.t || ''} ${e.text || ''}`), (d.subtitles || []).length ? '字幕：' + d.subtitles.join(' / ') : '', d.salience ? `值不值得说：${d.salience.level}${d.salience.note ? '（' + d.salience.note + '）' : ''}` : ''].filter(Boolean).join('\n') : r.text || ''
-  a.append(meta, img, p)
+  const snd = document.createElement('p')
+  snd.className = 'meta'
+  const sd = r.sound || { state: 'none' }
+  snd.textContent = sd.state === 'heard' ? '听到：' + sd.text : sd.state === 'silent' ? '这段没听到台词（或太安静，没去听）' : sd.state === 'failed' ? '声音没听成' + (r.soundError ? '：' + r.soundError : '') : '没有声音'
+  a.append(meta, img, p, snd)
   $('reports').prepend(a)
   while ($('reports').children.length > 6) {
     const old = $('reports').lastChild.querySelector('img')
@@ -321,6 +370,7 @@ async function stopRun(why) {
     clearInterval(R.timer)
     R.stream.getTracks().forEach((t) => t.stop())
     R.pending?.bmp.close()
+    if (R.audio) { try { R.audio.proc.disconnect(); R.audio.src.disconnect(); void R.audio.ctx.close() } catch {} }
     for (const x of R.batcher.pending) x.bmp.close()
     $('video').srcObject = null
   }

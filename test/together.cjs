@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict')
 const http = require('node:http')
 const F = require('../app/src/frames-core')
-const { atriBase, visionBase, DeskClient, askVision, fetchPortrait } = require('../app/src/together-net')
+const { atriBase, visionBase, DeskClient, askVision, askHearing, fetchPortrait } = require('../app/src/together-net')
 
 function solid(r, g, b) {
   const a = new Uint8ClampedArray(F.SCAN_W * F.SCAN_H * 4)
@@ -92,6 +92,18 @@ function solid(r, g, b) {
   assert.equal(F.prevLine({ scene: '教室', events: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] }), '教室；b；c')
   assert.equal(F.cost({ promptTokens: 1e6, completionTokens: 5e5 }, { in: 2, out: 8 }), 6)
 
+  // 声音：WAV 头、音量、听到的填进提示词、只取 <结果>
+  const w = F.wav16([new Int16Array([1000, -1000]), new Int16Array([0])])
+  assert.equal(Buffer.from(w).toString('ascii', 0, 4), 'RIFF')
+  assert.equal(Buffer.from(w).readUInt32LE(24), 16000)
+  assert.equal(w.length, 44 + 3 * 2)
+  assert.ok(F.rms([new Int16Array(100)]) === 0 && F.rms([new Int16Array(100).fill(16384)]) > 0.4)
+  const withSlot = F.buildPrompt({ title: 't', from: 0, to: 10, cells: [], format: 'F', heardSlot: true })
+  assert.match(F.fillHeard(withSlot, '“回来了”'), /同一段听到的（耳朵听的，可能听错；以字幕条为准）：“回来了”\nF$/)
+  assert.doesNotMatch(F.fillHeard(withSlot, ''), /HEARD|听到/, '没听到就删掉这一行')
+  assert.equal(F.finalAnswer('Let me listen\n<结果>台词：你好</结果>'), '台词：你好')
+  assert.equal(F.finalAnswer('Draft: x\n台词：谢谢'), '台词：谢谢')
+
   // 地址只认本机隧道口 / https
   for (const u of ['https://127.0.0.1:15160', 'http://localhost:15160', 'http://192.168.1.2:15160', 'http://127.0.0.1:15160/x', 'http://u:p@127.0.0.1:1']) assert.throws(() => atriBase(u), u)
   assert.equal(atriBase('http://127.0.0.1:15160/'), 'http://127.0.0.1:15160')
@@ -104,6 +116,7 @@ function solid(r, g, b) {
   // 本机假服务：Atri 桌面入口 + 看图线路
   const seen = []
   let visionMode = 'fail-once'
+  let hearMode = 'fail-once'
   const server = http.createServer((req, res) => {
     const chunks = []
     req.on('data', (c) => chunks.push(c))
@@ -116,6 +129,12 @@ function solid(r, g, b) {
         if (req.url === '/desk/hello') return res.end(JSON.stringify({ ok: true, prompt: { system: 'S', format: 'F' }, watchlist: ['夏日重现'] }))
         if (req.url === '/desk/segment') return res.end(JSON.stringify({ ok: true, speak: true }))
         return res.end('{"ok":true}')
+      }
+      if (req.url === '/h/chat/completions') {
+        const b = JSON.parse(body)
+        if (b.messages[0].content[1].type !== 'input_audio' || b.messages[0].content[1].input_audio.format !== 'wav') { res.statusCode = 400; return res.end('{}') }
+        if (hearMode === 'fail-once') { hearMode = 'ok'; res.statusCode = 503; return res.end('{}') }
+        return res.end(JSON.stringify({ choices: [{ message: { content: 'Thinking...\n<结果>1. 台词：“回来了”（ただいま）\n2. 钢琴\n3. 温馨</结果>' } }], usage: { prompt_tokens: 300, completion_tokens: 50 } }))
       }
       if (req.url === '/v1/chat/completions') {
         if (visionMode === 'fail-once') { visionMode = 'ok'; res.statusCode = 502; return res.end('{"error":"busy"}') }
@@ -145,6 +164,14 @@ function solid(r, g, b) {
     assert.equal(call.messages[1].content[1].image_url.url, 'data:image/jpeg;base64,' + Buffer.from('jpeg').toString('base64'))
     assert.equal(seen.filter((x) => x.url === '/v1/chat/completions').length, 2, '502 再试一次')
     assert.equal(seen.filter((x) => x.url === '/v1/chat/completions').at(-1).auth, 'Bearer k')
+    const h2 = await askHearing({ base: 'http://127.0.0.1:' + port + '/h', model: 'g', key: 'k', prompt: 'P', wav: w, finalAnswer: F.finalAnswer })
+    assert.match(h2.text, /^1\. 台词：“回来了”（ただいま）/)
+    assert.deepEqual([h2.usage.tier, h2.usage.promptTokens], ['hearing', 300])
+    assert.equal(seen.filter((x) => x.url === '/h/chat/completions').length, 2, '503 再试一次')
+    await assert.rejects(askHearing({ base: 'http://127.0.0.1:' + port + '/h', model: 'g', key: '', prompt: 'P', wav: w }), /密钥/)
+    const seg2 = await desk.segment({ sessionId: 's', seq: 2, from: 0, to: 10, data: { scene: '教室' }, sound: { state: 'heard', text: h2.text, via: 'cloud' } })
+    assert.equal(seg2.ok, true)
+    assert.ok(!seen.at(-1).body.includes('RIFF') && !seen.at(-1).body.includes('UklGR'), '交给 Atri 的没有声音文件')
     visionMode = 'empty'
     await assert.rejects(askVision({ base: 'http://127.0.0.1:' + port + '/v1', model: 'm', key: 'k', system: 'S', prompt: 'P', images: [] }), /空的/)
     await assert.rejects(askVision({ base: 'http://127.0.0.1:' + port + '/v1', model: 'm', key: '', system: 'S', prompt: 'P', images: [] }), /密钥/)

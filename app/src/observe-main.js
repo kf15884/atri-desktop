@@ -21,8 +21,8 @@ function install({ipcMain,openWindow,getWindow,bridge,onState,otherDisplay}) {
   // Only the explicit observation window can request desktop media, only while its session is active.
   session.defaultSession.setDisplayMediaRequestHandler(async(request,callback)=>{
     try{
-      // 一起看番的观看窗口（0.4）：给它选定的来源，只要画面
-      const other=otherDisplay?.(request);if(other)return callback({video:other})
+      // 一起看番的观看窗口（0.4）：给它选定的来源（开了声音再加系统回环）
+      const other=otherDisplay?.(request);if(other)return callback(other)
       const win=getWindow();if(!win||request.frame!==win.webContents.mainFrame||!observer.running||!observer.options.audio||!selected)return callback({})
       const source=(await desktopCapturer.getSources({types:[selected.startsWith('screen:')?'screen':'window'],thumbnailSize:{width:0,height:0}})).find(s=>s.id===selected)
       callback(source?{video:source,audio:'loopback'}:{})
