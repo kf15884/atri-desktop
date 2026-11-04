@@ -1,19 +1,16 @@
 <!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: https: data:; style-src 'self' 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; connect-src 'none'">
 <style>
-html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;font-family:"Microsoft YaHei UI",sans-serif}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;font-family:system-ui,"Microsoft YaHei UI",sans-serif}
 #wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
 #stand{max-width:100%;max-height:100%;object-fit:contain;pointer-events:auto;-webkit-user-drag:none;cursor:grab}
-#empty{color:#fff;background:#0008;padding:12px;border-radius:8px;font-size:13px}
+#empty{color:#fff;background:#0009;padding:10px 12px;border-radius:8px;font-size:13px;cursor:pointer}
 #bubble{position:absolute;top:8px;left:8px;right:8px;background:#fffffff2;color:#333;border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.5;
   box-shadow:0 4px 14px #0003;opacity:0;transition:opacity .4s;max-height:45%;overflow:auto;white-space:pre-wrap;word-break:break-word;pointer-events:auto;cursor:pointer}
 #bubble.show{opacity:1}
-#bubble .note{color:#888}
-#bubble img{max-width:100%;border-radius:6px}
 #dot{position:absolute;right:6px;bottom:6px;width:8px;height:8px;border-radius:50%;background:#e55}
 #dot.on{background:#3c6}
 </style></head><body>
-<div id="wrap"><div id="empty">在托盘菜单「设置」里选择立绘</div><img id="stand" style="display:none"></div>
-<div id="bubble"></div><div id="dot" title=""></div>
-<script src="common.js"></script>
+<div id="wrap"><div id="empty">在对话框“设置”里选一张立绘</div><img id="stand" style="display:none" alt=""></div>
+<div id="bubble"></div><div id="dot"></div>
 <script src="pet-ui.js"></script></body></html>

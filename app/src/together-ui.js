@@ -15,7 +15,7 @@ let spent = 0
 let calls = 0
 
 const err = (e) => { $('error').textContent = e ? (e.message || String(e)) : '' }
-const settingIds = ['atriUrl', 'visionBase', 'visionModel', 'extraBody', 'priceIn', 'priceOut', 'hearingBase', 'hearingModel', 'hearPriceIn', 'hearPriceOut', 'asrBase', 'asrModel']
+const settingIds = ['visionBase', 'visionModel', 'extraBody', 'priceIn', 'priceOut', 'hearingBase', 'hearingModel', 'hearPriceIn', 'hearPriceOut', 'asrBase', 'asrModel']
 
 function lock(on) {
   ;['source', 'refresh', 'title', 'episode', 'startMin', 'mode', 'fps', 'strip', 'castRef', 'hearingMode'].forEach((id) => ($(id).disabled = on))
@@ -35,7 +35,6 @@ async function init() {
     $('castRef').checked = s.castRef
     $('hearingMode').value = s.hearingMode
     $('hearingKey').placeholder = s.hasHearingKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
-    $('token').placeholder = s.hasToken ? '已保存（要改才填）' : '桌面口令（和服务器 ATRI_DESK_TOKEN 一样）'
     $('key').placeholder = s.hasKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
   } catch (e) { err(e) }
   refresh()
@@ -83,11 +82,9 @@ $('save').onclick = async () => {
   try {
     const x = { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked, hearingMode: $('hearingMode').value }
     for (const id of settingIds) x[id] = $(id).value
-    if ($('token').value) x.token = $('token').value
     if ($('key').value) x.key = $('key').value
     if ($('hearingKey').value) x.hearingKey = $('hearingKey').value
     await atri.together('save', x)
-    $('token').value = ''
     $('key').value = ''
     $('hearingKey').value = ''
     $('saveMsg').textContent = '保存了'

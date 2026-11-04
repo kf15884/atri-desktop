@@ -1,8 +1,8 @@
 {
   "name": "atri-desktop",
   "productName": "Atri Desktop",
-  "version": "0.4.1",
-  "description": "Atri 桌面：一起看番（连 atri-self）、立绘与对话框（旧版 HDS 镜像）",
+  "version": "0.5.0",
+  "description": "Atri 桌面：和新的 Atri 聊天、一起看番（自动连接）",
   "main": "src/main.js",
   "license": "MIT",
   "scripts": {

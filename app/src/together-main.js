@@ -6,23 +6,24 @@
 const { desktopCapturer, safeStorage } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
-const { DeskClient, askVision, askHearing, fetchPortrait, atriBase, visionBase } = require('./together-net')
-const { transcribe, localBase } = require('./observe-core')
+const { askVision, askHearing, fetchPortrait, visionBase } = require('./together-net')
+const { transcribe, localBase } = require('./asr-local')
 const { finalAnswer, fillHeard, clock } = require('./frames-core')
 
 const DEFAULTS = { atriUrl: 'http://127.0.0.1:15160', tokenEnc: '', visionBase: 'https://api.deepseek.com', visionModel: '', keyEnc: '', extraBody: '', priceIn: 0, priceOut: 0, mode: 'interval', fps: 4, castRef: true, strip: true,
   hearingMode: 'cloud', hearingBase: '', hearingModel: '', hearingKeyEnc: '', hearPriceIn: 0, hearPriceOut: 0, asrBase: 'http://127.0.0.1:8000/v1', asrModel: 'small' }
 
-function install({ ipcMain, userDir, getWindow }) {
+function install({ ipcMain, userDir, getWindow, connection }) {
   const file = path.join(userDir, 'together.json')
   let s = { ...DEFAULTS }
   try { s = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(file, 'utf8')) } } catch {}
   const save = () => { fs.mkdirSync(userDir, { recursive: true }); fs.writeFileSync(file, JSON.stringify(s, null, 2), { mode: 0o600 }) }
   const enc = (t) => (t ? safeStorage.encryptString(t).toString('base64') : '')
   const dec = (b) => { if (!b) return ''; try { return safeStorage.decryptString(Buffer.from(b, 'base64')) } catch { return '' } }
-  const pub = () => ({ atriUrl: s.atriUrl, hasToken: !!s.tokenEnc, visionBase: s.visionBase, visionModel: s.visionModel, hasKey: !!s.keyEnc, extraBody: s.extraBody, priceIn: s.priceIn, priceOut: s.priceOut, mode: s.mode, fps: s.fps, castRef: s.castRef, strip: s.strip,
+  const pub = () => ({ visionBase: s.visionBase, visionModel: s.visionModel, hasKey: !!s.keyEnc, extraBody: s.extraBody, priceIn: s.priceIn, priceOut: s.priceOut, mode: s.mode, fps: s.fps, castRef: s.castRef, strip: s.strip,
     hearingMode: s.hearingMode, hearingBase: s.hearingBase, hearingModel: s.hearingModel, hasHearingKey: !!s.hearingKeyEnc, hearPriceIn: s.hearPriceIn, hearPriceOut: s.hearPriceOut, asrBase: s.asrBase, asrModel: s.asrModel })
-  const desk = () => new DeskClient({ base: s.atriUrl, token: dec(s.tokenEnc) })
+  // 连 Atri 用自动连接那一条（0.5）
+  const desk = () => connection.desk()
   let session = null // { id, prompt, sourceId, sourceName }
   let selected = null
 
@@ -32,8 +33,6 @@ function install({ ipcMain, userDir, getWindow }) {
   ipcMain.handle('together-save', (e, x) => {
     trusted(e)
     if (!x || typeof x !== 'object') throw new Error('invalid')
-    if (typeof x.atriUrl === 'string') s.atriUrl = atriBase(x.atriUrl)
-    if (typeof x.token === 'string' && x.token.trim()) { if (x.token.trim().length < 24) throw new Error('口令至少 24 位'); s.tokenEnc = enc(x.token.trim()) }
     if (typeof x.visionBase === 'string') s.visionBase = visionBase(x.visionBase)
     if (typeof x.visionModel === 'string') s.visionModel = x.visionModel.trim().slice(0, 120)
     if (typeof x.key === 'string' && x.key.trim()) s.keyEnc = enc(x.key.trim())

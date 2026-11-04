@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 一起看番</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; connect-src 'none'">
-<link rel="stylesheet" href="observe.css"></head><body>
-<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.4.1</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
+<link rel="stylesheet" href="app.css"></head><body>
+<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.5</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
 <div class="layout"><section class="panel controls">
 <h2>01 · 看什么</h2>
 <div class="line"><label class="grow">窗口 / 屏幕<select id="source"><option value="">点刷新读取能截的窗口</option></select></label><button id="refresh" class="secondary">刷新</button></div>
@@ -15,8 +15,7 @@
 <p class="caption">录的是电脑正在播放的声音（Windows 系统回环，不用麦克风），QQ 提示音、别的视频也会录进去，看的时候最好关掉。太安静的段落不去听。</p>
 <div class="actions"><button id="start" class="primary">开始一起看</button><button id="stop" class="secondary" disabled>看完了 / 停止</button></div><p id="error" role="alert" class="error"></p>
 <h2>02 · 设置</h2>
-<label>Atri 地址（SSH 隧道口）<input id="atriUrl" spellcheck="false" placeholder="http://127.0.0.1:15160"></label>
-<label>Atri 口令<input id="token" type="password" placeholder="已保存的不显示；要改才填" autocomplete="off"></label>
+<p class="caption">连 Atri 用托盘里“连接设置”的那一条自动连接，这里不用填。</p>
 <label>看图地址<input id="visionBase" spellcheck="false" placeholder="https://api.deepseek.com"></label>
 <label>看图模型<input id="visionModel" spellcheck="false" placeholder="和服务器“看”用的同一个"></label>
 <label>看图密钥<input id="key" type="password" placeholder="只存在这台电脑上（系统加密）；要改才填" autocomplete="off"></label>

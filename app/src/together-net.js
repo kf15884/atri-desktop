@@ -47,15 +47,15 @@ class DeskClient {
     this.token = String(token || '')
     this.fetch = f || fetch
   }
-  async req(method, path, body) {
+  async req(method, path, body, timeoutMs) {
     const r = await this.fetch(this.base + path, {
       method,
       redirect: 'error',
       headers: { authorization: 'Bearer ' + this.token, 'content-type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}),
-      signal: AbortSignal.timeout(path === '/desk/session/start' ? 45000 : 15000),
+      signal: AbortSignal.timeout(timeoutMs || (path === '/desk/session/start' ? 45000 : 15000)),
     })
-    const text = await boundedText(r, 256 * 1024)
+    const text = await boundedText(r, 2 * 1024 * 1024)
     let v = {}
     try {
       v = JSON.parse(text)
@@ -72,6 +72,20 @@ class DeskClient {
   segment(x) { return this.req('POST', '/desk/segment', x) }
   pause(sessionId, paused) { return this.req('POST', paused ? '/desk/session/pause' : '/desk/session/resume', { sessionId }) }
   stop(sessionId) { return this.req('POST', '/desk/session/stop', { sessionId }) }
+  // 聊天（0.5）
+  history(limit = 100) { return this.req('GET', '/desk/chat/history?limit=' + limit) }
+  events(after) { return this.req('GET', '/desk/chat/events?after=' + Math.max(0, Number(after) || 0), undefined, 40000) }
+  say(x) { return this.req('POST', '/desk/chat/say', x, 30000) }
+  ack(ping) { return this.req('POST', '/desk/chat/ack', { ping }) }
+  async sticker(id) {
+    const r = await this.fetch(this.base + '/desk/sticker?id=' + encodeURIComponent(id), { redirect: 'error', headers: { authorization: 'Bearer ' + this.token }, signal: AbortSignal.timeout(15000) })
+    if (!r.ok) throw new Error('表情包取不到：HTTP ' + r.status)
+    const type = String(r.headers.get('content-type') || 'image/png').split(';')[0]
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(type)) throw new Error('不是图片')
+    const buf = Buffer.from(await r.arrayBuffer())
+    if (buf.length > 5 * 1024 * 1024) throw new Error('表情包太大')
+    return 'data:' + type + ';base64,' + buf.toString('base64')
+  }
 }
 
 /**

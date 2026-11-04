@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 连接设置</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'">
+<link rel="stylesheet" href="app.css"></head><body>
+<main style="max-width:760px"><header><div><div class="eyebrow">ATRI DESKTOP / 0.5</div><h1>连接设置</h1><p>桌面一打开就自己连上服务器（专用账号 + 连接钥匙，不用你开隧道），聊天和一起看番都走这一条。</p></div><span id="badge" role="status">…</span></header>
+<section class="panel controls">
+<div id="state" class="status">读取中…</div>
+<h2>01 · 服务器</h2>
+<div class="line"><label class="grow">服务器地址（IP 或域名）<input id="host" spellcheck="false" placeholder="你的服务器 IP"></label><label style="width:7em">ssh 端口<input id="port" inputmode="numeric" placeholder="22"></label></div>
+<div class="line"><label class="grow">专用账号<input id="user" spellcheck="false" placeholder="atri-desk"></label><label style="width:9em">本机端口<input id="localPort" inputmode="numeric" placeholder="15160"></label></div>
+<label>桌面口令（和服务器 ATRI_DESK_TOKEN 一样）<input id="token" type="password" autocomplete="off" placeholder="已保存的不显示；要改才填"></label>
+<div class="actions"><button id="save" class="primary">保存并连接</button><button id="retry" class="secondary">现在重连</button></div><p id="msg" class="caption"></p>
+<h2>02 · 连接钥匙</h2>
+<p class="muted small">钥匙只在这台电脑上。第一次用：点“生成连接钥匙”，把下面那行命令复制到服务器上（root）运行一次。服务器那边的专用账号只能转发到桌面入口，不能登录、不能执行命令。</p>
+<div class="actions"><button id="keygen" class="secondary">生成连接钥匙</button><button id="copy" class="secondary" disabled>复制服务器命令</button><button id="forget" class="secondary">忘掉服务器指纹</button></div>
+<pre id="cmd" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:12px;border-radius:8px;font-size:12px" hidden></pre>
+</section><footer>“忘掉服务器指纹”只在你确定服务器重装过时用：第一次连上时记下的服务器指纹变了，程序会拒绝连接，防止连到假的服务器。</footer></main>
+<script src="connect-ui.js"></script></body></html>

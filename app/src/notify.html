@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; connect-src 'none'">
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;font-family:system-ui,"Microsoft YaHei UI",sans-serif}
+#card{position:absolute;inset:6px;display:flex;gap:12px;align-items:center;background:#202227f2;color:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 6px 20px #0006;cursor:pointer;
+  transform:translateY(16px);opacity:0;transition:transform .25s,opacity .25s}
+#card.show{transform:none;opacity:1}
+#avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;background:#5b8def;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700}
+#body{min-width:0;flex:1}#name{font-weight:650;font-size:14px;display:flex;justify-content:space-between}#name span{font-weight:400;font-size:11px;color:#aab}
+#text{font-size:13px;color:#dde;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+#x{position:absolute;top:4px;right:8px;color:#889;font-size:14px}
+</style></head><body>
+<div id="card"><div id="avatar">A</div><div id="body"><div id="name">Atri <span id="via"></span></div><div id="text"></div></div><div id="x" title="收起">×</div></div>
+<script src="notify-ui.js"></script></body></html>
