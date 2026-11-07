@@ -4,6 +4,12 @@ const assert = require('node:assert/strict')
 const http = require('node:http')
 const F = require('../app/src/frames-core')
 const { atriBase, visionBase, DeskClient, askVision, askHearing, fetchPortrait } = require('../app/src/together-net')
+// together-main 要 electron：测“嘀”声时给个空壳
+const Module = require('node:module')
+const realLoad = Module._load
+Module._load = function (req, ...rest) { return req === 'electron' ? { desktopCapturer: {}, safeStorage: {} } : realLoad.call(this, req, ...rest) }
+const { toneWav } = require('../app/src/together-main')
+Module._load = realLoad
 
 function solid(r, g, b) {
   const a = new Uint8ClampedArray(F.SCAN_W * F.SCAN_H * 4)
@@ -12,6 +18,16 @@ function solid(r, g, b) {
 }
 
 ;(async () => {
+  // 0.5.2 试一下听的线路：程序生成的“嘀”声是合法 WAV，有声音（不是全 0）
+  {
+    const w = toneWav()
+    assert.equal(w.toString('ascii', 0, 4), 'RIFF')
+    assert.equal(w.length, 44 + 16000 * 1.5 * 2)
+    const pcm = []
+    for (let i = 44; i < w.length; i += 2) pcm.push(w.readInt16LE(i))
+    assert.ok(F.rms([pcm]) > 0.1, '有声音')
+    assert.ok(F.rms([pcm.map(() => 0)]) < 0.004, '负例：全 0 就是安静')
+  }
   // 分块：底部一块变了（像换了一句字幕），整屏平均被冲淡，分块看得出来
   const base = solid(30, 60, 90)
   const sub = new Uint8ClampedArray(base)

@@ -296,8 +296,9 @@ function takeAudio(R) {
   if (!R.audio) return { audio: 'none' }
   const chunks = R.audio.chunks.splice(0)
   const keep = chunks.slice(-Math.ceil((30 * 16000) / 4096))
-  if (keep.length === 0 || F.rms(keep) < 0.004) return { audio: 'silent' }
-  return { audio: 'yes', wav: F.wav16(keep) }
+  const level = keep.length ? F.rms(keep) : 0
+  if (keep.length === 0 || level < 0.004) return { audio: 'silent', level }
+  return { audio: 'yes', wav: F.wav16(keep), level }
 }
 
 async function tick() {
@@ -363,7 +364,7 @@ async function submit(R, batch) {
     if (r.hearingUsage) spent += F.cost(r.hearingUsage, { in: Number($('hearPriceIn').value), out: Number($('hearPriceOut').value) })
     $('cost').textContent = `看了 ${calls} 次 · 约 ¥${spent.toFixed(3)}`
     if (r.data) R.prev = F.prevLine(r.data)
-    show(preview, from, to, r)
+    show(preview, from, to, r, sound.level)
   } catch (e) {
     err(e)
   } finally {
@@ -371,7 +372,7 @@ async function submit(R, batch) {
   }
 }
 
-function show(preview, from, to, r) {
+function show(preview, from, to, r, level) {
   $('empty').hidden = true
   const a = document.createElement('article')
   a.className = 'report'
@@ -388,7 +389,8 @@ function show(preview, from, to, r) {
   const snd = document.createElement('p')
   snd.className = 'meta'
   const sd = r.sound || { state: 'none' }
-  snd.textContent = sd.state === 'heard' ? '听到：' + sd.text : sd.state === 'silent' ? '这段没听到台词（或太安静，没去听）' : sd.state === 'failed' ? '声音没听成' + (r.soundError ? '：' + r.soundError : '') : '没有声音'
+  const lv = typeof level === 'number' ? '（录到的音量 ' + level.toFixed(3) + '）' : ''
+  snd.textContent = lv + (sd.state === 'heard' ? '听到：' + sd.text : sd.state === 'silent' ? '这段没听到台词（或太安静，没去听）' : sd.state === 'failed' ? '声音没听成' + (r.soundError ? '：' + r.soundError : '') : '没有声音')
   a.append(meta, img, p, snd)
   $('reports').prepend(a)
   while ($('reports').children.length > 6) {
@@ -419,5 +421,10 @@ $('start').onclick = async () => {
   try { await startRun() } catch (e) { err(e); await stopRun('') } finally { if (!run) lock(false) }
 }
 $('stop').onclick = () => stopRun('')
+$('hearTest').onclick = async () => {
+  $('saveMsg').textContent = '在发一段“嘀”声给听的模型…'
+  const r = await atri.together('heartest').catch((e) => ({ ok: false, error: e.message || String(e) }))
+  $('saveMsg').textContent = r.ok ? '听的模型说：' + r.text + (/没有收到/.test(r.text) ? ' —— 这条线路没把声音交给模型，换个听的模型或地址' : '') : '没测成：' + r.error
+}
 window.addEventListener('beforeunload', () => { if (run) void stopRun('') })
 init()

@@ -13,6 +13,17 @@ const { finalAnswer, fillHeard, clock } = require('./frames-core')
 const DEFAULTS = { atriUrl: 'http://127.0.0.1:15160', tokenEnc: '', visionBase: 'https://api.deepseek.com', visionModel: '', keyEnc: '', extraBody: '', priceIn: 0, priceOut: 0, mode: 'interval', fps: 4, castRef: true, strip: true,
   hearingMode: 'cloud', hearingBase: '', hearingModel: '', hearingKeyEnc: '', hearPriceIn: 0, hearPriceOut: 0, asrBase: 'http://127.0.0.1:8000/v1', asrModel: 'small' }
 
+/** 一段 1.5 秒、440Hz 的“嘀”声，16kHz 单声道 WAV（测听的线路用） */
+function toneWav(sec = 1.5, hz = 440) {
+  const n = Math.round(16000 * sec)
+  const buf = Buffer.alloc(44 + n * 2)
+  buf.write('RIFF', 0, 'ascii'); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVEfmt ', 8, 'ascii'); buf.writeUInt32LE(16, 16)
+  buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(16000, 24); buf.writeUInt32LE(32000, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34)
+  buf.write('data', 36, 'ascii'); buf.writeUInt32LE(n * 2, 40)
+  for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.sin((2 * Math.PI * hz * i) / 16000) * 12000), 44 + i * 2)
+  return buf
+}
+
 function install({ ipcMain, userDir, getWindow, connection }) {
   const file = path.join(userDir, 'together.json')
   let s = { ...DEFAULTS }
@@ -53,6 +64,17 @@ function install({ ipcMain, userDir, getWindow, connection }) {
     return pub()
   })
   ipcMain.handle('together-hello', async (e) => { trusted(e); return desk().hello() })
+  // 试一下听的线路（0.5.2）：发一段程序生成的“嘀”声（1.5 秒 440Hz），看听的模型能不能听见；不碰屏幕和系统声音
+  ipcMain.handle('together-heartest', async (e) => {
+    trusted(e)
+    if (s.hearingMode !== 'cloud') return { ok: false, error: '“声音”选的不是“听”的模型，不用测这条线路' }
+    try {
+      const r = await askHearing({ base: s.hearingBase, model: s.hearingModel, key: dec(s.hearingKeyEnc), prompt: '这段音频里能听到什么声音？用一句话说。如果你没有收到任何音频，就只回答：没有收到音频。', wav: toneWav(), finalAnswer: (t) => t })
+      return { ok: true, text: r.text }
+    } catch (err) {
+      return { ok: false, error: err.message }
+    }
+  })
   ipcMain.handle('together-sources', async (e) => {
     trusted(e)
     const list = await desktopCapturer.getSources({ types: ['window', 'screen'], thumbnailSize: { width: 320, height: 180 } })
@@ -158,4 +180,4 @@ function install({ ipcMain, userDir, getWindow, connection }) {
   return { stop, displaySource }
 }
 
-module.exports = { install }
+module.exports = { install, toneWav }

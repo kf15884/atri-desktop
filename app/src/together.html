@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atri · 一起看番</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; connect-src 'none'">
 <link rel="stylesheet" href="app.css"></head><body>
-<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.5</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
+<main><header><div><div class="eyebrow">ATRI DESKTOP / 0.5.2</div><h1>和 Atri 一起看番</h1><p>画面只在这台电脑和你填的看图线路之间走；交给 Atri 的只有看图模型写的文字。</p></div><span id="badge" role="status">未开始</span></header>
 <div class="layout"><section class="panel controls">
 <h2>01 · 看什么</h2>
 <div class="line"><label class="grow">窗口 / 屏幕<select id="source"><option value="">点刷新读取能截的窗口</option></select></label><button id="refresh" class="secondary">刷新</button></div>
@@ -26,7 +26,7 @@
 <label>听的密钥<input id="hearingKey" type="password" placeholder="只存在这台电脑上（系统加密）；要改才填" autocomplete="off"></label>
 <div class="line"><label class="grow">听的输入单价<input id="hearPriceIn" inputmode="decimal"></label><label class="grow">听的输出单价<input id="hearPriceOut" inputmode="decimal"></label></div>
 <div class="line"><label class="grow">本地日语识别地址<input id="asrBase" spellcheck="false" placeholder="http://127.0.0.1:8000/v1"></label><label style="width:8em">模型<input id="asrModel" spellcheck="false" placeholder="small"></label></div>
-<div class="actions"><button id="save" class="secondary">保存设置</button><button id="hello" class="secondary">试一下连 Atri</button></div><p id="saveMsg" class="caption"></p>
+<div class="actions"><button id="save" class="secondary">保存设置</button><button id="hello" class="secondary">试一下连 Atri</button><button id="hearTest" class="secondary">试一下听的线路</button></div><p id="saveMsg" class="caption"></p>
 </section><section class="panel results"><div class="titleline"><h2>看到的</h2><span id="cost" class="muted small">还没花钱</span></div>
 <div id="state" class="status">没在截图。点“开始一起看”才会开始。</div>
 <video id="video" muted playsinline hidden></video>
