@@ -1,7 +1,7 @@
 {
   "name": "atri-desktop",
   "productName": "Atri Desktop",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Atri 桌面：和新的 Atri 聊天、一起看番（自动连接）",
   "main": "src/main.js",
   "license": "MIT",

@@ -18,7 +18,7 @@ const err = (e) => { $('error').textContent = e ? (e.message || String(e)) : '' 
 const settingIds = ['visionBase', 'visionModel', 'extraBody', 'priceIn', 'priceOut', 'hearingBase', 'hearingModel', 'hearPriceIn', 'hearPriceOut', 'asrBase', 'asrModel']
 
 function lock(on) {
-  ;['source', 'refresh', 'title', 'episode', 'startMin', 'mode', 'fps', 'strip', 'castRef', 'hearingMode'].forEach((id) => ($(id).disabled = on))
+  ;['source', 'refresh', 'title', 'episode', 'startMin', 'mode', 'fps', 'strip', 'castRef', 'hearingMode', 'audioFrom', 'audioRefresh'].forEach((id) => ($(id).disabled = on))
   $('start').disabled = on
   $('stop').disabled = !on
   $('badge').textContent = on ? '一起看着' : '未开始'
@@ -34,11 +34,42 @@ async function init() {
     $('strip').checked = s.strip
     $('castRef').checked = s.castRef
     $('hearingMode').value = s.hearingMode
+    savedAudio = s.audioFrom || 'loopback'
     $('hearingKey').placeholder = s.hasHearingKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
     $('key').placeholder = s.hasKey ? '已保存（要改才填）' : '只存在这台电脑上（系统加密）'
   } catch (e) { err(e) }
   refresh()
+  void listAudio()
   hello(true)
+}
+
+let savedAudio = 'loopback'
+
+/**
+ * 声音从哪来（0.5.3）：默认系统回环；也可以选一个录音设备（立体声混音、虚拟声卡 CABLE Output 等），
+ * 给播放器声音不走默认播放设备的情况用。名字要先拿一次录音许可才看得到。
+ */
+async function listAudio() {
+  const sel = $('audioFrom')
+  const cur = sel.value || savedAudio
+  let devs = []
+  try {
+    devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput')
+    if (devs.length && devs.every((d) => !d.label)) {
+      const t = await navigator.mediaDevices.getUserMedia({ audio: true })
+      t.getTracks().forEach((x) => x.stop())
+      devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput')
+    }
+  } catch {}
+  sel.innerHTML = ''
+  sel.append(new Option('电脑正在播放的声音（Windows 默认播放设备）', 'loopback'))
+  for (const d of devs) if (d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications') sel.append(new Option('录音设备：' + (d.label || '没名字的设备'), d.deviceId))
+  sel.value = [...sel.options].some((o) => o.value === cur) ? cur : 'loopback'
+}
+
+/** 从选的录音设备拿声音；关掉系统的回声消除、降噪、自动音量，录原样 */
+async function openDeviceAudio(deviceId) {
+  return navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } })
 }
 
 async function hello(quiet) {
@@ -222,11 +253,23 @@ async function startRun() {
   let hearing = $('hearingMode').value
   await atri.together('save', { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked, hearingMode: hearing })
   const r = await atri.together('start', { sourceId: source.id, title, episode: $('episode').value.trim(), startSec })
-  const opened = await openStream(hearing)
-  const stream = opened.stream
-  if (!opened.audio && hearing !== 'off') {
+  const audioFrom = $('audioFrom').value || 'loopback'
+  await atri.together('save', { audioFrom })
+  const fromDevice = hearing !== 'off' && audioFrom !== 'loopback'
+  const opened = await openStream(fromDevice ? 'off' : hearing)
+  let stream = opened.stream
+  let soundNote = ''
+  if (fromDevice) {
+    try {
+      const a = await openDeviceAudio(audioFrom)
+      stream = new MediaStream([...stream.getVideoTracks(), ...a.getAudioTracks()])
+    } catch (e) {
+      hearing = 'off'
+      soundNote = '选的录音设备打不开（' + ((e && e.message) || e) + '），这次只看画面'
+    }
+  } else if (!opened.audio && hearing !== 'off') {
     hearing = 'off'
-    $('state').textContent = '声音截不到，这次只看画面（画面照常交给 Atri）'
+    soundNote = '声音截不到，这次只看画面（可以在“声音从哪来”改选录音设备）'
   }
   const video = $('video')
   video.srcObject = stream
@@ -265,7 +308,7 @@ async function startRun() {
   lock(true)
   $('reports').replaceChildren()
   $('empty').hidden = false
-  $('state').textContent = `开始了：${title ? '《' + title + '》' : ''}${run.episode ? ' 第 ' + run.episode + ' 集' : ''}${cast ? `，角色参考 ${cast.members.length} 个` : ''}`
+  $('state').textContent = `开始了：${title ? '《' + title + '》' : ''}${run.episode ? ' 第 ' + run.episode + ' 集' : ''}${cast ? `，角色参考 ${cast.members.length} 个` : ''}${soundNote ? '。' + soundNote : ''}`
 }
 
 /** 电脑正在播放的声音 → 16kHz 单声道 PCM 片段，最多留 40 秒 */
@@ -421,6 +464,7 @@ $('start').onclick = async () => {
   try { await startRun() } catch (e) { err(e); await stopRun('') } finally { if (!run) lock(false) }
 }
 $('stop').onclick = () => stopRun('')
+$('audioRefresh').onclick = () => void listAudio()
 $('hearTest').onclick = async () => {
   $('saveMsg').textContent = '在发一段“嘀”声给听的模型…'
   const r = await atri.together('heartest').catch((e) => ({ ok: false, error: e.message || String(e) }))
