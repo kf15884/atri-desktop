@@ -142,12 +142,17 @@ function install({ ipcMain, userDir, getWindow, connection }) {
     return desk().stop(id).catch((err) => ({ ok: false, error: err.message }))
   }
 
-  /** 观看窗口要屏幕画面时：给它选定的那个来源（别的窗口、没开始时都不给） */
-  function displaySource(request) {
+  /**
+   * 观看窗口要屏幕画面时：给它选定的那个来源（别的窗口、没开始时都不给）。
+   * 0.5.1：每次现取一遍来源（窗口重开过 id 对得上就行）；页面没要声音就不给回环（截不到时页面会不带声音再试）
+   */
+  async function displaySource(request) {
     const w = getWindow()
     if (!w || request.frame !== w.webContents.mainFrame || !selected) return null
+    const fresh = (await desktopCapturer.getSources({ types: [selected.id.startsWith('screen:') ? 'screen' : 'window'], thumbnailSize: { width: 0, height: 0 } })).find((y) => y.id === selected.id)
+    if (!fresh) return null
     // 开了声音：Windows 系统回环（电脑正在播放的声音，不是麦克风）
-    return session && session.hearing !== 'off' ? { video: selected, audio: 'loopback' } : { video: selected }
+    return session && session.hearing !== 'off' && request.audioRequested !== false ? { video: fresh, audio: 'loopback' } : { video: fresh }
   }
 
   return { stop, displaySource }

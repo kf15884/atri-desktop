@@ -162,8 +162,8 @@ app.whenReady().then(() => {
   tray.setToolTip('Atri')
   tray.on('click', createChat)
   // 一起看番的窗口要屏幕画面时：给它选定的那个来源（别的窗口都不给）
-  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-    try { callback(together?.displaySource(request) || {}) } catch { callback({}) }
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+    try { callback((await together?.displaySource(request)) || {}) } catch { callback({}) }
   })
 
   connection = require('./connection').install({

@@ -178,6 +178,39 @@ async function castSheet(cast) {
   return { canvas: c, members: withImg }
 }
 
+/**
+ * 打开画面（0.5.1）：Windows 有时报“Could not start video source”。依次退一步再试：
+ * 720p 带声音 → 不限分辨率带声音 → 不带声音；都不行就说清楚可能的原因。
+ */
+async function openStream(hearing) {
+  const wantAudio = hearing !== 'off'
+  const tries = [
+    { video: { width: CAP_W, height: CAP_H, frameRate: 10 }, audio: wantAudio },
+    { video: true, audio: wantAudio },
+    ...(wantAudio ? [{ video: true, audio: false }] : []),
+  ]
+  let last = null
+  for (const c of tries) {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia(c)
+      return { stream, audio: c.audio && stream.getAudioTracks().length > 0 }
+    } catch (e) {
+      last = e
+      if (e && e.name === 'NotAllowedError') break
+    }
+  }
+  throw new Error(captureHelp(last))
+}
+
+function captureHelp(e) {
+  const name = (e && e.name) || ''
+  const msg = (e && e.message) || String(e)
+  if (name === 'NotReadableError' || /Could not start/i.test(msg))
+    return '截不到这个窗口（' + msg + '）。试试：播放器窗口别最小化；点“刷新”重新选一次窗口；浏览器里放的可以改选“整个屏幕”，或者在浏览器设置里关掉硬件加速'
+  if (name === 'NotAllowedError') return '没拿到截屏许可（' + msg + '）。点“刷新”重新选窗口再开始'
+  return '打开画面出错：' + msg
+}
+
 async function startRun() {
   err()
   const source = sources.find((s) => s.id === $('source').value)
@@ -186,10 +219,15 @@ async function startRun() {
   const title = $('title').value.trim()
   if (!title && !confirm('没填番名：Atri 不知道看的是什么，也查不了角色表。照样开始吗？')) return
   const startSec = Math.max(0, Number($('startMin').value) || 0) * 60
-  const hearing = $('hearingMode').value
+  let hearing = $('hearingMode').value
   await atri.together('save', { mode: $('mode').value, fps: Number($('fps').value), strip: $('strip').checked, castRef: $('castRef').checked, hearingMode: hearing })
   const r = await atri.together('start', { sourceId: source.id, title, episode: $('episode').value.trim(), startSec })
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { width: CAP_W, height: CAP_H, frameRate: 10 }, audio: hearing !== 'off' })
+  const opened = await openStream(hearing)
+  const stream = opened.stream
+  if (!opened.audio && hearing !== 'off') {
+    hearing = 'off'
+    $('state').textContent = '声音截不到，这次只看画面（画面照常交给 Atri）'
+  }
   const video = $('video')
   video.srcObject = stream
   await video.play()
